@@ -106,7 +106,7 @@ function updateRateDisplay() {
       month: "short",
       day: "numeric",
     });
-    lastUpdatedEl.textContent = `Exchange Rate Updated at: ${dateStr} at ${timeStr}`;
+    lastUpdatedEl.textContent = `Exchange Rate Updated on: ${dateStr} at ${timeStr}`;
   }
 }
 
