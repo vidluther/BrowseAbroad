@@ -8,7 +8,7 @@ For example, if I see a price of 100 INR on a website, I want to know how much t
 
 ## What's Included
 
-### 1. [Chrome Extension - Currency Converter](./chrome-extension/)
+### [Chrome Extension - Currency Converter](./chrome-extension/)
 
 A browser extension that automatically detects prices on web pages and shows currency conversions on hover. Useful when shopping online and comparing prices between countries.
 
