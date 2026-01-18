@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Converter",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Converts prices and other units from one currency to another, or performs unit conversions",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["https://api.exchangerate-api.com/*"],

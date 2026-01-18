@@ -215,18 +215,29 @@
    * Set up event listeners for price hover
    */
   function setupEventListeners() {
-    // Use event delegation on document body
-    document.body.addEventListener('mouseenter', (e) => {
-      if (e.target.classList && e.target.classList.contains('currency-converter-price')) {
-        showTooltip(e.target);
-      }
-    }, true);
+    // Track currently hovered price element to avoid re-triggering
+    let currentPriceEl = null;
 
-    document.body.addEventListener('mouseleave', (e) => {
-      if (e.target.classList && e.target.classList.contains('currency-converter-price')) {
-        hideTooltip();
+    // Use mouseover/mouseout for proper event delegation (they bubble)
+    document.body.addEventListener('mouseover', (e) => {
+      const priceEl = e.target.closest('.currency-converter-price');
+      if (priceEl && priceEl !== currentPriceEl) {
+        currentPriceEl = priceEl;
+        showTooltip(priceEl);
       }
-    }, true);
+    });
+
+    document.body.addEventListener('mouseout', (e) => {
+      const priceEl = e.target.closest('.currency-converter-price');
+      if (priceEl) {
+        // Check if we're moving to another element inside the same price container
+        const relatedTarget = e.relatedTarget;
+        if (!relatedTarget || !priceEl.contains(relatedTarget)) {
+          currentPriceEl = null;
+          hideTooltip();
+        }
+      }
+    });
 
     // Listen for settings changes
     chrome.storage.onChanged.addListener((changes, namespace) => {

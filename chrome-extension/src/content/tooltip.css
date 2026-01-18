@@ -3,12 +3,12 @@
 /* Detected price styling - subtle underline indicator */
 .currency-converter-price {
   cursor: pointer;
-  border-bottom: 1px dotted rgba(100, 100, 100, 0.5);
+  border-bottom: 1px dotted rgba(100, 100, 100, 0.2);
   transition: border-color 0.2s ease;
 }
 
 .currency-converter-price:hover {
-  border-bottom-color: rgba(66, 133, 244, 0.8);
+  border-bottom-color: rgba(66, 133, 244, 0.5);
 }
 
 /* Tooltip container */

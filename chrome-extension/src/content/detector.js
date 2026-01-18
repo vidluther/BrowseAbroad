@@ -193,6 +193,16 @@ const PriceDetector = {
         // Selector might be invalid, ignore
       }
     });
+
+    // Process generic price selectors (for IKEA, etc.)
+    genericSelectors.forEach(selector => {
+      try {
+        const elements = root.querySelectorAll(selector);
+        elements.forEach(el => this.processStructuredPriceElement(el));
+      } catch (e) {
+        // Selector might be invalid, ignore
+      }
+    });
   },
 
   /**
@@ -213,8 +223,8 @@ const PriceDetector = {
     let amount = null;
     let currency = null;
 
-    // Check for INR patterns
-    const inrMatch = text.match(/₹\s*([\d,]+(?:\.\d{1,2})?)/);
+    // Check for INR patterns (₹ or Rs.)
+    const inrMatch = text.match(/(?:₹|Rs\.?)\s*([\d,]+(?:\.\d{1,2})?)/i);
     if (inrMatch) {
       currency = 'INR';
       amount = parseFloat(inrMatch[1].replace(/,/g, ''));
@@ -222,8 +232,8 @@ const PriceDetector = {
 
     // Check for just numbers with rupee symbol somewhere in parent
     if (!currency) {
-      const hasRupeeSymbol = text.includes('₹') ||
-        (element.closest && element.closest('[class*="price"]')?.textContent.includes('₹'));
+      const hasRupeeSymbol = text.includes('₹') || /Rs\.?/i.test(text) ||
+        (element.closest && /₹|Rs\.?/i.test(element.closest('[class*="price"]')?.textContent || ''));
       const numberMatch = text.match(/^[\d,]+(?:\.\d{1,2})?$/);
       if (hasRupeeSymbol && numberMatch) {
         currency = 'INR';
