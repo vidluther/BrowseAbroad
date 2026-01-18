@@ -25,7 +25,6 @@ See the [chrome-extension README](./chrome-extension/README.md) for installation
 ## Planned Tools
 
 - Unit converter (cm/inches, kg/lbs, temperatures)
-
 - Firefox extension
 - Safari extension
 
