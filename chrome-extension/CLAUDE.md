@@ -1,6 +1,6 @@
-# Claude Code Context - Chrome Extension
+# CLAUDE.md
 
-This file provides context for Claude Code when working on the Chrome extension.
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Architecture
 
@@ -89,4 +89,14 @@ manifest.json loads:
 
 ## Commands
 
-No build step required - pure vanilla JS. Just reload extension after changes.
+**No build step required** - pure vanilla JavaScript. After changes, reload the extension at `chrome://extensions`.
+
+### Testing
+```bash
+npm test                    # Run all tests once
+npm run test:watch          # Run tests in watch mode
+npm run test:coverage       # Run tests with coverage report
+npx vitest tests/unit/converters.test.js  # Run a single test file
+```
+
+Tests use vitest with jsdom environment. Test files are in `tests/unit/`.

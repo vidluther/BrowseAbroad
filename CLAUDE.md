@@ -21,15 +21,18 @@ The main project is a Manifest V3 Chrome extension that detects prices on web pa
 
 ### Development
 
-**No build step required** - pure vanilla JavaScript. After making changes:
-1. Go to `chrome://extensions`
-2. Click the reload icon on the extension
+**No build step required** - pure vanilla JavaScript. After changes, reload at `chrome://extensions`.
 
 ### Testing
 
-1. Load unpacked extension from `chrome-extension/` folder
-2. Test on Amazon India/US or other e-commerce sites
-3. Check DevTools console for errors
+```bash
+cd chrome-extension
+npm test                    # Run all unit tests
+npm run test:watch          # Watch mode
+npm run test:coverage       # Coverage report
+```
+
+For manual testing, load unpacked extension and test on Amazon or other e-commerce sites.
 
 ### Key Files
 
