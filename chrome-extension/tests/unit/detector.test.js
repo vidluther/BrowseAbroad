@@ -72,10 +72,6 @@ describe('PriceDetector', () => {
     });
 
     describe('USD formats', () => {
-      // Note: The current parsePrice implementation has a regex issue where plain "$"
-      // symbols don't get stripped properly. The regex /^(US?\$|USD)\s*/ expects
-      // "U$", "US$", or "USD" but not plain "$". These tests document actual behavior.
-
       it('should parse USD prefix', () => {
         const result = PriceDetector.parsePrice('USD 50.00');
         expect(result).toEqual({
@@ -112,14 +108,40 @@ describe('PriceDetector', () => {
         });
       });
 
-      // Note: Plain $ format detection is limited - the code detects currency
-      // correctly but the replace regex doesn't strip the $ properly.
-      // These tests document the current behavior.
-      it('should detect $ symbol as USD currency', () => {
+      it('should parse $ symbol format', () => {
         const result = PriceDetector.parsePrice('$99.99');
-        // Currently returns null because the amount becomes "$99.99" after replace
-        // which fails parseFloat. This is a known limitation.
-        expect(result).toBeNull();
+        expect(result).toEqual({
+          amount: 99.99,
+          currency: 'USD',
+          original: '$99.99'
+        });
+      });
+
+      it('should parse $ with space', () => {
+        const result = PriceDetector.parsePrice('$ 100');
+        expect(result).toEqual({
+          amount: 100,
+          currency: 'USD',
+          original: '$ 100'
+        });
+      });
+
+      it('should parse $ with commas', () => {
+        const result = PriceDetector.parsePrice('$1,234.56');
+        expect(result).toEqual({
+          amount: 1234.56,
+          currency: 'USD',
+          original: '$1,234.56'
+        });
+      });
+
+      it('should parse $ with decimal', () => {
+        const result = PriceDetector.parsePrice('$10.50');
+        expect(result).toEqual({
+          amount: 10.5,
+          currency: 'USD',
+          original: '$10.50'
+        });
       });
     });
 

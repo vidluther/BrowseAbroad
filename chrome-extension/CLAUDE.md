@@ -51,6 +51,7 @@ Uses `chrome.storage.sync`:
 - Amazon splits prices across elements - use `scanStructuredPrices()`
 - Check if element has `data-price-detected` already
 - Verify regex patterns in `combinedPattern`
+- Ensure `parsePrice()` strip regex handles all prefix variants — both `combinedPattern` (detection) and the strip regex in `parsePrice()` must agree on what's valid
 
 ### Tooltip Not Showing
 - Check if `settings.enabled` is true

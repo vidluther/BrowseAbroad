@@ -10,6 +10,7 @@ For example, go to https://www.amazon.in and look at prices, hover over a price 
 
 - Amazon India (https://www.amazon.in) (INR to USD)
 - Amazon US (https://www.amazon.com) (USD to INR)
+- Namecheap (https://www.namecheap.com) (USD to INR)
 - Dell India (https://www.dell.com/en-in) (INR to USD)
 - DailyObjects (https://www.dailyobjects.com/) (INR to USD)
 

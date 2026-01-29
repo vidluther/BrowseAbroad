@@ -64,7 +64,7 @@ const PriceDetector = {
       amountStr = str.replace(/^(₹|Rs\.?|INR)\s*/i, '');
     } else if (/\$/.test(str) || /^USD/i.test(str) || /^US\$/i.test(str)) {
       currency = 'USD';
-      amountStr = str.replace(/^(US?\$|USD)\s*/i, '');
+      amountStr = str.replace(/^(US\$|USD|\$)\s*/i, '');
     }
 
     if (!currency || !amountStr) return null;
