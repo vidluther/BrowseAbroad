@@ -17,6 +17,7 @@
   let exchangeRates = null;
   let tooltip = null;
   let isInitialized = false;
+  let setupComplete = false;
   let initAttempts = 0;
   let currentPriceEl = null;
   const MAX_INIT_ATTEMPTS = 3;
@@ -35,11 +36,11 @@
         return;
       }
 
-      // These are idempotent — safe to skip on retry
-      if (!tooltip) {
+      if (!setupComplete) {
         createTooltip();
         setupEventListeners();
         setupMutationObserver();
+        setupComplete = true;
       }
 
       await fetchExchangeRates();
@@ -93,6 +94,7 @@
    * Create the tooltip element
    */
   function createTooltip() {
+    if (tooltip) return;
     tooltip = document.createElement("div");
     tooltip.className = "currency-converter-tooltip";
     tooltip.id = TOOLTIP_ID;

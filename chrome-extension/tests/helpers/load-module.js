@@ -19,8 +19,11 @@ export function loadWindowModule(relativePath, existingWindow) {
     getComputedStyle: global.window.getComputedStyle.bind(global.window)
   };
 
-  // Collect all globals from windowContext so they're available as bare names in the script
-  const globalNames = Object.keys(windowContext);
+  // Inject windowContext properties as bare-name parameters so scripts can reference them without `window.`
+  const FIXED_PARAMS = new Set(['window', 'document', 'console', 'NodeFilter']);
+  const globalNames = Object.keys(windowContext).filter(
+    (k) => /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(k) && !FIXED_PARAMS.has(k)
+  );
   const fn = new Function('window', 'document', 'console', 'NodeFilter', ...globalNames, code);
   fn(windowContext, global.document, console, global.NodeFilter, ...globalNames.map(k => windowContext[k]));
 

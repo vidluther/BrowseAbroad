@@ -1,12 +1,13 @@
 {
   "name": "browseabroad-chrome-extension",
-  "version": "1.0.2",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "version:bump": "node scripts/bump-version.js"
   },
   "devDependencies": {
     "vitest": "^4.0.18",
