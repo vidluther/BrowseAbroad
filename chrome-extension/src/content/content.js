@@ -6,6 +6,8 @@
 (function () {
   "use strict";
 
+  const TOOLTIP_ID = "currency-converter-tooltip";
+
   // State
   let settings = {
     enabled: true,
@@ -15,35 +17,45 @@
   let exchangeRates = null;
   let tooltip = null;
   let isInitialized = false;
+  let initAttempts = 0;
+  let currentPriceEl = null;
+  const MAX_INIT_ATTEMPTS = 3;
 
   /**
    * Initialize the extension
    */
   async function init() {
     if (isInitialized) return;
-    isInitialized = true;
 
-    // Load settings
-    await loadSettings();
+    try {
+      await loadSettings();
 
-    if (!settings.enabled) return;
+      if (!settings.enabled) {
+        isInitialized = true;
+        return;
+      }
 
-    // Create tooltip element
-    createTooltip();
+      // These are idempotent — safe to skip on retry
+      if (!tooltip) {
+        createTooltip();
+        setupEventListeners();
+        setupMutationObserver();
+      }
 
-    // Fetch exchange rates
-    await fetchExchangeRates();
+      await fetchExchangeRates();
 
-    // Initial DOM scan
-    if (document.body) {
-      PriceDetector.scanDOM(document.body);
+      if (document.body) {
+        PriceDetector.scanDOM(document.body);
+      }
+
+      isInitialized = true;
+    } catch (e) {
+      console.warn("Currency Converter: init failed, will retry", e);
+      initAttempts++;
+      if (initAttempts < MAX_INIT_ATTEMPTS) {
+        setTimeout(init, 5000);
+      }
     }
-
-    // Set up event listeners
-    setupEventListeners();
-
-    // Set up MutationObserver for dynamic content
-    setupMutationObserver();
   }
 
   /**
@@ -83,6 +95,7 @@
   function createTooltip() {
     tooltip = document.createElement("div");
     tooltip.className = "currency-converter-tooltip";
+    tooltip.id = TOOLTIP_ID;
     tooltip.setAttribute("role", "tooltip");
     tooltip.innerHTML =
       '<div class="currency-converter-tooltip-content"></div>';
@@ -96,18 +109,19 @@
   function showTooltip(priceElement) {
     if (!tooltip || !settings.enabled) return;
 
+    priceElement.setAttribute("aria-describedby", TOOLTIP_ID);
+    currentPriceEl = priceElement;
+
     const amount = parseFloat(priceElement.getAttribute("data-amount"));
     const currency = priceElement.getAttribute("data-currency");
 
     if (isNaN(amount) || !currency) return;
 
-    // Don't convert if already in home currency
     if (currency === settings.homeCurrency) return;
 
     const targetCurrency = settings.homeCurrency;
 
     if (!exchangeRates) {
-      // Show loading/error state
       updateTooltipContent({
         loading: true,
         message: "Loading rates...",
@@ -117,20 +131,28 @@
       return;
     }
 
-    // Calculate conversion using full rates object
     const convertedAmount = Converters.convertCurrency(
       amount,
       currency,
       targetCurrency,
       exchangeRates,
     );
+
+    if (convertedAmount === null) {
+      updateTooltipContent({
+        error: `No rate available for ${currency} → ${targetCurrency}`,
+      });
+      positionTooltip(priceElement);
+      tooltip.classList.add("visible");
+      return;
+    }
+
     const formattedConverted = Converters.formatCurrency(
       convertedAmount,
       targetCurrency,
     );
     const formattedOriginal = Converters.formatCurrency(amount, currency);
 
-    // Calculate the display rate (1 source = X home)
     const oneUnitConverted = Converters.convertCurrency(
       1,
       currency,
@@ -138,14 +160,12 @@
       exchangeRates,
     );
 
-    // Update tooltip content
     updateTooltipContent({
       value: formattedConverted,
       original: `${formattedOriginal} ${currency}`,
       rate: `1 ${currency} = ${oneUnitConverted.toFixed(2)} ${targetCurrency}`,
     });
 
-    // Position and show
     positionTooltip(priceElement);
     tooltip.classList.add("visible");
   }
@@ -187,21 +207,17 @@
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
 
-    // Calculate position (prefer below the element)
     let top = rect.bottom + 8;
     let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
 
-    // Check if tooltip would go off bottom of screen
     tooltip.classList.remove("position-top", "position-bottom");
     if (top + tooltipRect.height > viewportHeight - 10) {
-      // Position above instead
       top = rect.top - tooltipRect.height - 8;
       tooltip.classList.add("position-top");
     } else {
       tooltip.classList.add("position-bottom");
     }
 
-    // Keep within horizontal bounds
     if (left < 10) {
       left = 10;
     } else if (left + tooltipRect.width > viewportWidth - 10) {
@@ -219,20 +235,20 @@
     if (tooltip) {
       tooltip.classList.remove("visible");
     }
+    if (currentPriceEl) {
+      currentPriceEl.removeAttribute("aria-describedby");
+      currentPriceEl = null;
+    }
   }
 
   /**
    * Set up event listeners for price hover
    */
   function setupEventListeners() {
-    // Track currently hovered price element to avoid re-triggering
-    let currentPriceEl = null;
-
-    // Use mouseover/mouseout for proper event delegation (they bubble)
+    // mouseover/mouseout bubble, enabling event delegation
     document.body.addEventListener("mouseover", (e) => {
       const priceEl = e.target.closest(".currency-converter-price");
       if (priceEl && priceEl !== currentPriceEl) {
-        currentPriceEl = priceEl;
         showTooltip(priceEl);
       }
     });
@@ -240,16 +256,27 @@
     document.body.addEventListener("mouseout", (e) => {
       const priceEl = e.target.closest(".currency-converter-price");
       if (priceEl) {
-        // Check if we're moving to another element inside the same price container
         const relatedTarget = e.relatedTarget;
         if (!relatedTarget || !priceEl.contains(relatedTarget)) {
-          currentPriceEl = null;
           hideTooltip();
         }
       }
     });
 
-    // Listen for settings changes
+    document.body.addEventListener("focusin", (e) => {
+      const priceEl = e.target.closest(".currency-converter-price");
+      if (priceEl) {
+        showTooltip(priceEl);
+      }
+    });
+
+    document.body.addEventListener("focusout", (e) => {
+      const priceEl = e.target.closest(".currency-converter-price");
+      if (priceEl) {
+        hideTooltip();
+      }
+    });
+
     chrome.storage.onChanged.addListener((changes, namespace) => {
       if (namespace === "sync") {
         if (changes.enabled !== undefined) {
@@ -261,8 +288,7 @@
       }
     });
 
-    // Listen for rate updates from background
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    chrome.runtime.onMessage.addListener((message) => {
       if (message.action === "ratesUpdated" && message.rates) {
         exchangeRates = message.rates;
       }
@@ -277,10 +303,8 @@
       if (!settings.enabled) return;
 
       mutations.forEach((mutation) => {
-        // Process added nodes
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === Node.ELEMENT_NODE) {
-            // Scan the new element for prices
             PriceDetector.scanDOM(node);
           }
         });

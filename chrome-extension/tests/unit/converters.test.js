@@ -75,6 +75,22 @@ describe("Converters", () => {
       const result = Converters.convertCurrency(100, "EUR", "GBP", rates);
       expect(result).toBeCloseTo((100 / 0.92) * 0.79, 2);
     });
+
+    it("should return null when source currency is missing from rates", () => {
+      expect(Converters.convertCurrency(100, "JPY", "USD", rates)).toBeNull();
+    });
+
+    it("should return null when target currency is missing from rates", () => {
+      expect(Converters.convertCurrency(100, "USD", "JPY", rates)).toBeNull();
+    });
+
+    it("should return null when rates object is null", () => {
+      expect(Converters.convertCurrency(100, "USD", "INR", null)).toBeNull();
+    });
+
+    it("should return null when rates object is undefined", () => {
+      expect(Converters.convertCurrency(100, "USD", "INR", undefined)).toBeNull();
+    });
   });
 
   describe("formatCurrency", () => {

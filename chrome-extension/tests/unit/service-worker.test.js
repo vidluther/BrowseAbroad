@@ -98,7 +98,8 @@ describe('Service Worker', () => {
       await fetchRatesFromAPI();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'https://api.exchangerate-api.com/v4/latest/USD'
+        'https://api.exchangerate-api.com/v4/latest/USD',
+        expect.objectContaining({ signal: expect.any(AbortSignal) })
       );
     });
 
@@ -288,6 +289,90 @@ describe('Service Worker', () => {
       mockFetch.mockRejectedValue(new Error('API unavailable'));
 
       await expect(getExchangeRates()).rejects.toThrow('API unavailable');
+    });
+  });
+
+  describe('message handlers', () => {
+    let messageListener;
+
+    beforeEach(() => {
+      // The service worker registers a listener via chrome.runtime.onMessage.addListener
+      const calls = global.chrome.runtime.onMessage.addListener.mock.calls;
+      messageListener = calls[calls.length - 1]?.[0];
+    });
+
+    it('should register a message listener', () => {
+      expect(messageListener).toBeDefined();
+      expect(typeof messageListener).toBe('function');
+    });
+
+    it('should respond to getExchangeRates action with cached rates', async () => {
+      const cachedData = {
+        rates: { USD: 1, INR: 83.0 },
+        timestamp: Date.now()
+      };
+      global.chrome.storage.local.get.mockResolvedValue({ exchangeRates: cachedData });
+
+      const sendResponse = vi.fn();
+      const returnValue = messageListener({ action: 'getExchangeRates' }, {}, sendResponse);
+
+      expect(returnValue).toBe(true); // Keeps channel open for async
+
+      // Wait for async response
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ rates: cachedData.rates, timestamp: cachedData.timestamp })
+      );
+    });
+
+    it('should respond to getExchangeRates action with error on failure', async () => {
+      global.chrome.storage.local.get.mockResolvedValue({});
+      mockFetch.mockRejectedValue(new Error('Network fail'));
+
+      const sendResponse = vi.fn();
+      messageListener({ action: 'getExchangeRates' }, {}, sendResponse);
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ error: 'Network fail' })
+      );
+    });
+
+    it('should respond to refreshRates action with fresh rates', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ rates: { USD: 1, INR: 84.0 }, base: 'USD' })
+      });
+
+      const sendResponse = vi.fn();
+      const returnValue = messageListener({ action: 'refreshRates' }, {}, sendResponse);
+
+      expect(returnValue).toBe(true);
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, rates: { USD: 1, INR: 84.0 } })
+      );
+    });
+
+    it('should respond to refreshRates action with error on failure', async () => {
+      mockFetch.mockRejectedValue(new Error('Refresh fail'));
+
+      const sendResponse = vi.fn();
+      messageListener({ action: 'refreshRates' }, {}, sendResponse);
+
+      await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
+      expect(sendResponse).toHaveBeenCalledWith(
+        expect.objectContaining({ success: false, error: 'Refresh fail' })
+      );
+    });
+
+    it('should not respond to unknown actions', () => {
+      const sendResponse = vi.fn();
+      const returnValue = messageListener({ action: 'unknownAction' }, {}, sendResponse);
+
+      expect(returnValue).toBeUndefined();
+      expect(sendResponse).not.toHaveBeenCalled();
     });
   });
 });
