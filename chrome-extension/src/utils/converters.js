@@ -14,6 +14,9 @@ const Converters = {
    */
   convertCurrency(amount, from, to, rates) {
     if (from === to) return amount;
+    if (!rates || rates[from] === undefined || rates[to] === undefined) {
+      return null;
+    }
 
     // Convert to USD first (base currency), then to target
     const amountInUSD = from === "USD" ? amount : amount / rates[from];
@@ -30,14 +33,10 @@ const Converters = {
    * @returns {string} Formatted currency string
    */
   formatCurrency(amount, currency) {
-    const currencyLocales = {
-      USD: "en-US",
-      INR: "en-IN",
-      EUR: "de-DE",
-      GBP: "en-GB",
-    };
-
-    const locale = currencyLocales[currency] || "en-US";
+    const config =
+      typeof SUPPORTED_CURRENCIES !== "undefined" &&
+      SUPPORTED_CURRENCIES[currency];
+    const locale = config ? config.locale : "en-US";
 
     try {
       return new Intl.NumberFormat(locale, {

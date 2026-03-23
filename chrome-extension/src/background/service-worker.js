@@ -11,18 +11,25 @@ const CACHE_DURATION_MS = 24 * 60 * 60 * 1000; // 24 hours
  * @returns {Promise<object>} Exchange rates with USD as base
  */
 async function fetchRatesFromAPI() {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch(RATE_API_URL);
+    const response = await fetch(RATE_API_URL, { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!response.ok) {
       throw new Error(`API responded with status ${response.status}`);
     }
     const data = await response.json();
+    if (!data.rates || typeof data.rates !== 'object') {
+      throw new Error('Invalid API response: missing rates object');
+    }
     return {
       rates: data.rates,
       timestamp: Date.now(),
-      base: data.base
+      base: data.base || 'USD'
     };
   } catch (error) {
+    clearTimeout(timeoutId);
     console.error('Currency Converter: Failed to fetch rates', error);
     throw error;
   }

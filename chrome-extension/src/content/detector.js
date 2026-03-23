@@ -40,35 +40,13 @@ const PriceDetector = {
   combinedPattern: null,
 
   /**
-   * Initialize the combined pattern
+   * Initialize the combined pattern from the patterns object
    */
   init() {
-    const inrPatterns = [
-      "₹\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "\\bRs\\.?\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "INR\\s*[\\d,]+(?:\\.\\d{1,2})?",
-    ];
-    const usdPatterns = [
-      "(?<![A-Z])\\$\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "USD\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "US\\$\\s*[\\d,]+(?:\\.\\d{1,2})?",
-    ];
-    const eurPatterns = [
-      "€\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "EUR\\s*[\\d,]+(?:\\.\\d{1,2})?",
-    ];
-    const gbpPatterns = [
-      "£\\s*[\\d,]+(?:\\.\\d{1,2})?",
-      "GBP\\s*[\\d,]+(?:\\.\\d{1,2})?",
-    ];
-
-    const allPatterns = [
-      ...inrPatterns,
-      ...usdPatterns,
-      ...eurPatterns,
-      ...gbpPatterns,
-    ].join("|");
-    this.combinedPattern = new RegExp(`(${allPatterns})`, "gi");
+    const allSources = Object.values(this.patterns)
+      .flat()
+      .map((regex) => regex.source);
+    this.combinedPattern = new RegExp(`(${allSources.join("|")})`, "gi");
   },
 
   /**
@@ -135,15 +113,15 @@ const PriceDetector = {
     ];
     if (skipTags.includes(element.tagName)) return true;
 
-    // Skip elements that are hidden
-    const style = window.getComputedStyle(element);
-    if (style.display === "none" || style.visibility === "hidden") return true;
-
     // Skip elements we've already processed
     if (element.hasAttribute("data-price-detected")) return true;
 
     // Skip editable elements
     if (element.isContentEditable) return true;
+
+    // Skip hidden elements (checked last since getComputedStyle triggers reflow)
+    const style = window.getComputedStyle(element);
+    if (style.display === "none" || style.visibility === "hidden") return true;
 
     return false;
   },
@@ -195,6 +173,7 @@ const PriceDetector = {
       span.setAttribute("data-price-detected", "true");
       span.setAttribute("data-amount", m.amount);
       span.setAttribute("data-currency", m.currency);
+      span.setAttribute("tabindex", "0");
       span.textContent = m.text;
       fragment.appendChild(span);
 
@@ -263,86 +242,35 @@ const PriceDetector = {
     // Skip if already processed or hidden
     if (this.shouldSkipElement(element)) return;
 
-    // Try to extract price from the element's text content
     const text = element.textContent.trim();
     if (!text) return;
 
-    // Look for price patterns in the combined text
-    let amount = null;
-    let currency = null;
+    // Try standard parsing first (reuses parsePrice logic)
+    let result = this.parsePrice(text);
 
-    // Check for INR patterns (₹ or Rs.)
-    const inrMatch = text.match(/(?:₹|\bRs\.?)\s*([\d,]+(?:\.\d{1,2})?)/i);
-    if (inrMatch) {
-      currency = "INR";
-      amount = parseFloat(inrMatch[1].replace(/,/g, ""));
-    }
-
-    // Check for just numbers with rupee symbol somewhere in parent
-    if (!currency) {
-      const hasRupeeSymbol =
-        text.includes("₹") ||
-        /\bRs\.?/i.test(text) ||
-        (element.closest &&
-          /₹|\bRs\.?/i.test(
-            element.closest('[class*="price"]')?.textContent || "",
-          ));
+    // Fallback: bare number with currency symbol in a parent price container
+    // Handles Amazon-style split prices where symbol and amount are in separate elements
+    if (!result) {
       const numberMatch = text.match(/^[\d,]+(?:\.\d{1,2})?$/);
-      if (hasRupeeSymbol && numberMatch) {
-        currency = "INR";
-        amount = parseFloat(numberMatch[0].replace(/,/g, ""));
+      if (numberMatch) {
+        const parentText =
+          element.closest?.('[class*="price"]')?.textContent || "";
+        const amount = parseFloat(numberMatch[0].replace(/,/g, ""));
+        if (amount > 0) {
+          if (/₹|\bRs\.?/i.test(parentText)) result = { amount, currency: "INR" };
+          else if (/\$/.test(parentText)) result = { amount, currency: "USD" };
+          else if (/€|\bEUR\b/i.test(parentText)) result = { amount, currency: "EUR" };
+          else if (/£|\bGBP\b/i.test(parentText)) result = { amount, currency: "GBP" };
+        }
       }
     }
 
-    // Check for USD patterns
-    if (!currency) {
-      const usdMatch = text.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
-      if (usdMatch) {
-        currency = "USD";
-        amount = parseFloat(usdMatch[1].replace(/,/g, ""));
-      }
-    }
-
-    // Check for EUR patterns
-    if (!currency) {
-      const eurMatch = text.match(/€\s*([\d,]+(?:\.\d{1,2})?)/);
-      if (eurMatch) {
-        currency = "EUR";
-        amount = parseFloat(eurMatch[1].replace(/,/g, ""));
-      }
-    }
-
-    if (!currency) {
-      const eurTextMatch = text.match(/\bEUR\s*([\d,]+(?:\.\d{1,2})?)/i);
-      if (eurTextMatch) {
-        currency = "EUR";
-        amount = parseFloat(eurTextMatch[1].replace(/,/g, ""));
-      }
-    }
-
-    // Check for GBP patterns
-    if (!currency) {
-      const gbpMatch = text.match(/£\s*([\d,]+(?:\.\d{1,2})?)/);
-      if (gbpMatch) {
-        currency = "GBP";
-        amount = parseFloat(gbpMatch[1].replace(/,/g, ""));
-      }
-    }
-
-    if (!currency) {
-      const gbpTextMatch = text.match(/\bGBP\s*([\d,]+(?:\.\d{1,2})?)/i);
-      if (gbpTextMatch) {
-        currency = "GBP";
-        amount = parseFloat(gbpTextMatch[1].replace(/,/g, ""));
-      }
-    }
-
-    if (!currency || !amount || isNaN(amount) || amount <= 0) return;
+    if (!result) return;
 
     // Mark as detected and add data attributes
     element.setAttribute("data-price-detected", "true");
-    element.setAttribute("data-amount", amount);
-    element.setAttribute("data-currency", currency);
+    element.setAttribute("data-amount", result.amount);
+    element.setAttribute("data-currency", result.currency);
     element.classList.add("currency-converter-price");
   },
 

@@ -868,4 +868,169 @@ describe("PriceDetector", () => {
       });
     });
   });
+
+  describe("processStructuredPriceElement", () => {
+    it("should detect INR price with ₹ symbol", () => {
+      const el = document.createElement("span");
+      el.textContent = "₹1,234.56";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.getAttribute("data-price-detected")).toBe("true");
+      expect(el.getAttribute("data-amount")).toBe("1234.56");
+      expect(el.getAttribute("data-currency")).toBe("INR");
+      expect(el.classList.contains("currency-converter-price")).toBe(true);
+      el.remove();
+    });
+
+    it("should detect USD price with $ symbol", () => {
+      const el = document.createElement("span");
+      el.textContent = "$99.99";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.getAttribute("data-price-detected")).toBe("true");
+      expect(el.getAttribute("data-amount")).toBe("99.99");
+      expect(el.getAttribute("data-currency")).toBe("USD");
+      el.remove();
+    });
+
+    it("should detect EUR price with € symbol", () => {
+      const el = document.createElement("span");
+      el.textContent = "€500";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.getAttribute("data-price-detected")).toBe("true");
+      expect(el.getAttribute("data-currency")).toBe("EUR");
+      el.remove();
+    });
+
+    it("should detect GBP price with £ symbol", () => {
+      const el = document.createElement("span");
+      el.textContent = "£250.00";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.getAttribute("data-price-detected")).toBe("true");
+      expect(el.getAttribute("data-currency")).toBe("GBP");
+      el.remove();
+    });
+
+    it("should skip already-processed elements", () => {
+      const el = document.createElement("span");
+      el.textContent = "₹1,000";
+      el.setAttribute("data-price-detected", "true");
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      // Should not add data-amount since it was already processed
+      expect(el.hasAttribute("data-amount")).toBe(false);
+      el.remove();
+    });
+
+    it("should skip empty elements", () => {
+      const el = document.createElement("span");
+      el.textContent = "";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.hasAttribute("data-price-detected")).toBe(false);
+      el.remove();
+    });
+
+    it("should skip null elements", () => {
+      expect(() => PriceDetector.processStructuredPriceElement(null)).not.toThrow();
+    });
+
+    it("should skip elements with no recognizable price", () => {
+      const el = document.createElement("span");
+      el.textContent = "Hello world";
+      document.body.appendChild(el);
+
+      PriceDetector.processStructuredPriceElement(el);
+
+      expect(el.hasAttribute("data-price-detected")).toBe(false);
+      el.remove();
+    });
+
+    it("should detect bare number when parent has currency symbol (Amazon-style)", () => {
+      const parent = document.createElement("div");
+      parent.className = "a-price";
+      const symbol = document.createElement("span");
+      symbol.textContent = "₹";
+      const amount = document.createElement("span");
+      amount.textContent = "1,499";
+      parent.appendChild(symbol);
+      parent.appendChild(amount);
+      document.body.appendChild(parent);
+
+      PriceDetector.processStructuredPriceElement(amount);
+
+      expect(amount.getAttribute("data-price-detected")).toBe("true");
+      expect(amount.getAttribute("data-amount")).toBe("1499");
+      expect(amount.getAttribute("data-currency")).toBe("INR");
+      parent.remove();
+    });
+
+    it("should detect bare number with $ in parent container", () => {
+      const parent = document.createElement("div");
+      parent.className = "price-container";
+      const symbol = document.createElement("span");
+      symbol.textContent = "$";
+      const amount = document.createElement("span");
+      amount.textContent = "29.99";
+      parent.appendChild(symbol);
+      parent.appendChild(amount);
+      document.body.appendChild(parent);
+
+      PriceDetector.processStructuredPriceElement(amount);
+
+      expect(amount.getAttribute("data-price-detected")).toBe("true");
+      expect(amount.getAttribute("data-currency")).toBe("USD");
+      parent.remove();
+    });
+  });
+
+  describe("scanStructuredPrices", () => {
+    it("should detect prices in Amazon-style .a-price elements", () => {
+      const root = document.createElement("div");
+      const priceEl = document.createElement("span");
+      priceEl.className = "a-price";
+      priceEl.textContent = "₹2,499.00";
+      root.appendChild(priceEl);
+      document.body.appendChild(root);
+
+      PriceDetector.scanStructuredPrices(root);
+
+      expect(priceEl.getAttribute("data-price-detected")).toBe("true");
+      expect(priceEl.getAttribute("data-currency")).toBe("INR");
+      root.remove();
+    });
+
+    it("should detect prices in generic price-class elements", () => {
+      const root = document.createElement("div");
+      const priceEl = document.createElement("span");
+      priceEl.className = "product-price";
+      priceEl.textContent = "$49.99";
+      root.appendChild(priceEl);
+      document.body.appendChild(root);
+
+      PriceDetector.scanStructuredPrices(root);
+
+      expect(priceEl.getAttribute("data-price-detected")).toBe("true");
+      expect(priceEl.getAttribute("data-currency")).toBe("USD");
+      root.remove();
+    });
+
+    it("should not crash on null root", () => {
+      expect(() => PriceDetector.scanStructuredPrices(null)).not.toThrow();
+    });
+  });
 });

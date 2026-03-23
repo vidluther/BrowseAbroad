@@ -1,23 +1,32 @@
 {
   "manifest_version": 3,
   "name": "BrowseAbroad",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Currency and unit converter for navigating life across borders",
-  "permissions": ["storage", "activeTab"],
-  "host_permissions": ["https://api.exchangerate-api.com/*"],
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://api.exchangerate-api.com/*"
+  ],
   "background": {
     "service_worker": "src/background/service-worker.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": [
+        "<all_urls>"
+      ],
       "js": [
         "src/config/currencies.config.js",
         "src/utils/converters.js",
         "src/content/detector.js",
         "src/content/content.js"
       ],
-      "css": ["src/content/tooltip.css"],
+      "css": [
+        "src/content/tooltip.css"
+      ],
       "run_at": "document_idle"
     }
   ],

@@ -5,25 +5,10 @@
 
 document.addEventListener("DOMContentLoaded", init);
 
-// Detected currencies (must match detector.js patterns)
-const DETECTED_CURRENCIES = ["USD", "INR", "EUR", "GBP"];
-
-// Locale-to-currency mapping for default home currency
-const LOCALE_CURRENCY_MAP = {
-  US: "USD",
-  GB: "GBP",
-  IN: "INR",
-  DE: "EUR",
-  FR: "EUR",
-  ES: "EUR",
-  IT: "EUR",
-  NL: "EUR",
-  AT: "EUR",
-  BE: "EUR",
-  PT: "EUR",
-  IE: "EUR",
-  FI: "EUR",
-};
+// Derived from currencies.config.js (loaded via popup.html script tag)
+const DETECTED_CURRENCIES = typeof SUPPORTED_CURRENCIES !== "undefined"
+  ? Object.keys(SUPPORTED_CURRENCIES)
+  : ["USD", "INR", "EUR", "GBP"];
 
 // Currency display names for the dropdown
 const CURRENCY_NAMES = {
@@ -97,13 +82,6 @@ let allRates = null;
 let rateTimestamp = null;
 let homeCurrency = "USD";
 
-function getDefaultHomeCurrency() {
-  const locale = navigator.language || "en-US";
-  if (!locale.includes("-")) return "USD";
-  const countryCode = locale.split("-").pop().toUpperCase();
-  return LOCALE_CURRENCY_MAP[countryCode] || "USD";
-}
-
 function init() {
   enabledToggle = document.getElementById("enabledToggle");
   homeCurrencySelect = document.getElementById("homeCurrencySelect");
@@ -123,7 +101,7 @@ async function loadSettings() {
     const result = await chrome.storage.sync.get(["enabled", "homeCurrency"]);
 
     enabledToggle.checked = result.enabled !== false;
-    homeCurrency = result.homeCurrency || getDefaultHomeCurrency();
+    homeCurrency = result.homeCurrency || getDefaultHomeCurrency(navigator.language);
 
     // If no homeCurrency was stored yet, save the default
     if (!result.homeCurrency) {
