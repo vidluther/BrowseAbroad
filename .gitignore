@@ -40,7 +40,8 @@ logs/
 .cache/
 .gemini/
 
-# Chrome extension artifacts
+# Extension build artifacts
+dist/
 *.crx
 *.pem
 *.zip

@@ -1,0 +1,29 @@
+{
+  "name": "browseabroad",
+  "version": "1.2.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.js all",
+    "build:chrome": "node scripts/build.js chrome",
+    "build:firefox": "node scripts/build.js firefox",
+    "dev": "node scripts/build.js all --watch",
+    "dev:chrome": "node scripts/build.js chrome --watch",
+    "dev:firefox": "node scripts/build.js firefox --watch",
+    "package": "node scripts/build.js all --zip",
+    "package:chrome": "node scripts/build.js chrome --zip",
+    "package:firefox": "node scripts/build.js firefox --zip",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint:firefox": "web-ext lint --source-dir=dist/firefox",
+    "version:bump": "node scripts/bump-version.js"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^4.0.18",
+    "jsdom": "^24.0.0",
+    "sharp": "^0.33.0",
+    "vitest": "^4.0.18",
+    "web-ext": "^10.1.0"
+  }
+}

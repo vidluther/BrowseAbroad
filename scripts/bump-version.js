@@ -1,11 +1,13 @@
 /**
- * Bump extension version in manifest.json (source of truth) and sync to package.json.
+ * Bump extension version across both manifests and package.json.
  *
  * Usage:
  *   node scripts/bump-version.js          # patch: 1.1.0 → 1.1.1
  *   node scripts/bump-version.js patch    # patch: 1.1.0 → 1.1.1
  *   node scripts/bump-version.js minor    # minor: 1.1.0 → 1.2.0
  *   node scripts/bump-version.js major    # major: 1.1.0 → 2.0.0
+ *
+ * Aborts if the three files disagree on the current version.
  */
 
 import { readFileSync, writeFileSync } from "fs";
@@ -15,8 +17,11 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 
-const MANIFEST_PATH = join(ROOT, "manifest.json");
-const PACKAGE_PATH = join(ROOT, "package.json");
+const TARGETS = [
+  { label: "manifest.chrome.json", path: join(ROOT, "manifest.chrome.json") },
+  { label: "manifest.firefox.json", path: join(ROOT, "manifest.firefox.json") },
+  { label: "package.json", path: join(ROOT, "package.json") },
+];
 
 const bumpType = process.argv[2] || "patch";
 
@@ -38,23 +43,32 @@ function bumpVersion(version, type) {
   }
 }
 
-function updateJsonFile(filePath, newVersion) {
-  const content = JSON.parse(readFileSync(filePath, "utf-8"));
-  const oldVersion = content.version;
-  content.version = newVersion;
-  writeFileSync(filePath, JSON.stringify(content, null, 2) + "\n");
-  return oldVersion;
+function readJson(path) {
+  return JSON.parse(readFileSync(path, "utf-8"));
 }
 
-// Read current version from manifest.json
-const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf-8"));
-const oldVersion = manifest.version;
+function writeJson(path, content) {
+  writeFileSync(path, JSON.stringify(content, null, 2) + "\n");
+}
+
+const versions = TARGETS.map((t) => ({ ...t, version: readJson(t.path).version }));
+
+const unique = [...new Set(versions.map((v) => v.version))];
+if (unique.length !== 1) {
+  console.error("Version drift detected — refusing to bump:");
+  for (const v of versions) console.error(`  ${v.label}: ${v.version}`);
+  console.error("Reconcile the files manually, then re-run.");
+  process.exit(1);
+}
+
+const oldVersion = unique[0];
 const newVersion = bumpVersion(oldVersion, bumpType);
 
-// Update both files
-updateJsonFile(MANIFEST_PATH, newVersion);
-updateJsonFile(PACKAGE_PATH, newVersion);
+for (const t of TARGETS) {
+  const json = readJson(t.path);
+  json.version = newVersion;
+  writeJson(t.path, json);
+  console.log(`  Updated ${t.label}`);
+}
 
 console.log(`${bumpType}: ${oldVersion} → ${newVersion}`);
-console.log(`  Updated manifest.json`);
-console.log(`  Updated package.json`);

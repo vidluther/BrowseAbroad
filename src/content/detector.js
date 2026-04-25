@@ -198,38 +198,20 @@ const PriceDetector = {
   scanStructuredPrices(root = document.body) {
     if (!root) return;
 
-    // Amazon price selectors
-    const amazonPriceSelectors = [
+    // Amazon-specific selectors are listed first so they take precedence over
+    // the generic [class*="price"] catch-all on Amazon pages.
+    const selectors = [
       ".a-price:not([data-price-detected])",
       ".a-price-whole:not([data-price-detected])",
       '[data-a-color="price"] .a-offscreen:not([data-price-detected])',
-    ];
-
-    // Generic price element selectors used by various e-commerce sites
-    const genericSelectors = [
       '[class*="price"]:not([data-price-detected])',
       '[class*="Price"]:not([data-price-detected])',
     ];
 
-    // Process Amazon-style prices first
-    amazonPriceSelectors.forEach((selector) => {
-      try {
-        const elements = root.querySelectorAll(selector);
-        elements.forEach((el) => this.processStructuredPriceElement(el));
-      } catch (e) {
-        // Selector might be invalid, ignore
-      }
-    });
-
-    // Process generic price selectors (for IKEA, etc.)
-    genericSelectors.forEach((selector) => {
-      try {
-        const elements = root.querySelectorAll(selector);
-        elements.forEach((el) => this.processStructuredPriceElement(el));
-      } catch (e) {
-        // Selector might be invalid, ignore
-      }
-    });
+    for (const selector of selectors) {
+      const elements = root.querySelectorAll(selector);
+      elements.forEach((el) => this.processStructuredPriceElement(el));
+    }
   },
 
   /**
