@@ -1,159 +1,75 @@
 # BrowseAbroad
 
-A collection of tools for navigating websites across borders, starting with currency and unit conversion utilities.
+A browser extension for navigating websites across borders. Detects prices on web pages and shows live currency conversions on hover.
 
-I built this for myself while living between countries. I needed an easy way to compare prices between INR and USD without constantly using a calculator.
+I built this for myself while living between countries. I needed an easy way to compare prices between INR and USD without constantly using a calculator. Unit conversions (cm/inches, kg/lbs, °F/°C) are next.
 
-I'm also going to need help with unit conversions. For example, cm to inches, kg to lbs, and Fahrenheit to Celsius.. etc etc.
+## Install
 
-## What's Included
+### Firefox
 
-### Chrome Extension - Currency Converter
+- **From addons.mozilla.org** (once published): search for "BrowseAbroad" and click Add.
+- **From GitHub Releases**: download the latest `.xpi` from the [Releases page](https://github.com/vidluther/BrowseAbroad/releases) and drag it into Firefox. The XPI is signed by Mozilla so it works in any Firefox build.
 
-A browser extension that automatically detects prices on web pages and shows currency conversions on hover. Useful when shopping online and comparing prices between countries.
+### Chrome / Edge / Brave / other Chromium
 
-**Features:**
-- Detects INR, USD, EUR, and GBP prices automatically
-- Shows converted prices on hover
-- Live exchange rates from [exchangerate-api.com](https://www.exchangerate-api.com), cached for 24 hours
-- Works on Amazon, IKEA, and other e-commerce sites
-- Optional manual rate override
-- Syncs settings across devices via `chrome.storage.sync`
+Until the Chrome Web Store listing is live:
 
-**Tested on:**
-- Amazon India (`amazon.in`) — INR to USD
-- Amazon US (`amazon.com`) — USD to INR
-- Namecheap (`namecheap.com`) — USD to INR
-- Dell India (`dell.com/en-in`) — INR to USD
-- DailyObjects (`dailyobjects.com`) — INR to USD
+1. Download `browseabroad-chrome.zip` from the [Releases page](https://github.com/vidluther/BrowseAbroad/releases) and unzip it.
+2. Open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and pick the unzipped folder.
 
-## Installing the Chrome Extension
+## Features
 
-There is **no build step**. The extension is pure vanilla JavaScript and loads directly from source.
+- Detects INR, USD, EUR, GBP automatically
+- Tooltip on hover shows the converted value and the live rate
+- Rates from [exchangerate-api.com](https://www.exchangerate-api.com), cached for 24 hours
+- Works on Amazon, IKEA, and other e-commerce sites with split-element prices
+- Settings sync across devices via `chrome.storage.sync`
 
-### Prerequisites
+Tested against `amazon.in`, `amazon.com`, `namecheap.com`, `dell.com/en-in`, `dailyobjects.com`.
 
-- Google Chrome (or any Chromium-based browser with extension developer mode)
-- Node.js — only needed to run tests; not required to use the extension
+## Develop
 
-### Steps
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/yourusername/BrowseAbroad.git
-   cd BrowseAbroad
-   ```
-
-2. **Open Chrome's extension manager**
-
-   Navigate to `chrome://extensions` in your browser.
-
-3. **Enable Developer mode**
-
-   Toggle **Developer mode** in the top-right corner of the extensions page.
-
-4. **Load the extension**
-
-   Click **Load unpacked** and select the `chrome-extension/` directory inside this repo.
-
-5. **Pin the extension** (optional)
-
-   Click the puzzle-piece icon in the toolbar and pin BrowseAbroad for quick access.
-
-6. **After any code change**
-
-   Click the refresh icon on the BrowseAbroad card at `chrome://extensions`. For service worker changes, remove and re-add the extension to avoid stale caches.
-
-### Regenerating Icons
-
-If you modify the icon source, regenerate the PNG files:
+Requires Node.js and pnpm.
 
 ```bash
-node chrome-extension/create-icons.js
+pnpm install
+pnpm test                # vitest, jsdom env
+pnpm build               # builds dist/chrome/ and dist/firefox/
+pnpm dev                 # build + watch both
+pnpm package             # build + zip → dist/browseabroad-chrome.zip + dist/browseabroad-firefox.xpi
+pnpm lint:firefox        # AMO validator (same one Mozilla runs)
 ```
 
-## Running Tests
+Load `dist/chrome/` in `chrome://extensions` (Load unpacked) or `dist/firefox/manifest.json` in `about:debugging` (Load Temporary Add-on).
 
-Tests use [Vitest](https://vitest.dev) with a jsdom environment. Chrome APIs are mocked in `tests/setup.js`.
+### Architecture
 
-```bash
-cd chrome-extension
-
-# Run all tests once
-npm test
-
-# Watch mode
-npm run test:watch
-
-# Coverage report
-npm run test:coverage
-
-# Run a single test file
-npx vitest run tests/unit/converters.test.js
-```
-
-## How It Works
+A single `src/` tree with two platform-specific manifests. `scripts/build.js` copies `src/`, `icons/`, and the right manifest into `dist/<platform>/`.
 
 ```
-manifest.json loads content scripts in order:
-  1. src/config/currencies.config.js   — currency definitions & locale map
-  2. src/utils/converters.js           — convertCurrency(), formatCurrency()
-  3. src/content/detector.js           — TreeWalker + CSS selector price detection
-  4. src/content/content.js            — tooltip UI, hover events, MutationObserver
-
-Background:
-  src/background/service-worker.js     — fetches & caches exchange rates (24h)
-
-Popup:
-  src/popup/popup.html/js/css          — settings UI (toggle, manual rate, refresh)
+src/
+  config/currencies.config.js   # currency definitions + locale → currency map
+  utils/converters.js           # convertCurrency(), formatCurrency()
+  content/detector.js           # TreeWalker + CSS-selector price detection
+  content/content.js            # tooltip UI, hover handlers, MutationObserver
+  content/tooltip.css
+  background/service-worker.js  # rate fetch + 24h cache
+  popup/popup.html|js|css       # settings popup
+manifest.chrome.json            # → dist/chrome/manifest.json
+manifest.firefox.json           # → dist/firefox/manifest.json
 ```
 
-Price detection runs in two phases:
-1. **Structured prices** — site-specific CSS selectors (e.g., Amazon's `.a-price`)
-2. **Text nodes** — `TreeWalker` scans all visible text with regex patterns for `₹`, `Rs.`, `INR`, `$`, `USD`, `€`, `EUR`, `£`, `GBP`
+The same `chrome.*` API calls run on both browsers — Firefox aliases `chrome` to `browser` for MV3 extensions, so no polyfill is needed.
 
-Detected prices get `data-price-detected="true"`, `data-amount`, and `data-currency` attributes and the `currency-converter-price` CSS class. Hovering triggers a tooltip showing the converted value and live exchange rate.
+### Releasing
 
-## Project Structure
+1. `pnpm version:bump patch|minor|major` — updates both manifests and `package.json` together.
+2. Commit, then tag: `git tag v$(node -p "require('./package.json').version")` and push the tag.
+3. The `.github/workflows/release.yml` action builds both platforms, signs the Firefox XPI via Mozilla's API (`web-ext sign --channel=unlisted`), and attaches both artifacts to the GitHub Release.
 
-```
-BrowseAbroad/
-├── chrome-extension/
-│   ├── manifest.json
-│   ├── src/
-│   │   ├── config/currencies.config.js    # Supported currencies & locale map
-│   │   ├── content/
-│   │   │   ├── content.js                 # Tooltip, events, MutationObserver
-│   │   │   ├── detector.js                # Price detection (regex + DOM)
-│   │   │   └── tooltip.css                # Tooltip & highlight styles
-│   │   ├── background/service-worker.js   # Rate fetching & caching
-│   │   ├── popup/popup.html/js/css        # Settings popup
-│   │   └── utils/converters.js            # Conversion & formatting functions
-│   ├── tests/
-│   │   ├── setup.js                       # Chrome API mocks
-│   │   └── unit/                          # Vitest unit tests
-│   ├── icons/                             # 16/48/128px PNGs
-│   ├── create-icons.js                    # Icon generator script
-│   └── package.json
-├── docs/
-├── AGENTS.md                              # Guidance for AI coding agents
-├── CLAUDE.md
-└── GEMINI.md
-```
-
-## Planned Tools
-
-- Unit converter (cm/inches, kg/lbs, temperatures)
-- Firefox extension
-- Safari extension
-
-## Contributing
-
-Contributions welcome. If you have ideas for tools that would help people navigating life across borders, open an issue or PR.
-
-See [AGENTS.md](./AGENTS.md) for code style, architecture notes, and contribution guidelines.
+The signing step needs `WEB_EXT_API_KEY` and `WEB_EXT_API_SECRET` configured as repo secrets — generate them at [addons.mozilla.org → Developer Hub → Manage API Keys](https://addons.mozilla.org/en-US/developers/addon/api/key/).
 
 ## License
 
-MIT
+MIT — see [LICENSE](./LICENSE).

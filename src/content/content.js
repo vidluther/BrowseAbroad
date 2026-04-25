@@ -99,8 +99,9 @@
     tooltip.className = "currency-converter-tooltip";
     tooltip.id = TOOLTIP_ID;
     tooltip.setAttribute("role", "tooltip");
-    tooltip.innerHTML =
-      '<div class="currency-converter-tooltip-content"></div>';
+    const content = document.createElement("div");
+    content.className = "currency-converter-tooltip-content";
+    tooltip.appendChild(content);
     document.body.appendChild(tooltip);
   }
 
@@ -182,20 +183,33 @@
     );
     if (!container) return;
 
+    container.replaceChildren();
+
+    const make = (className, text) => {
+      const el = document.createElement("div");
+      el.className = className;
+      el.textContent = text;
+      return el;
+    };
+
     if (content.loading) {
-      container.innerHTML = `
-        <div class="currency-converter-tooltip-loading">${content.message}</div>
-      `;
+      container.appendChild(
+        make("currency-converter-tooltip-loading", content.message),
+      );
     } else if (content.error) {
-      container.innerHTML = `
-        <div class="currency-converter-tooltip-error">${content.error}</div>
-      `;
+      container.appendChild(
+        make("currency-converter-tooltip-error", content.error),
+      );
     } else {
-      container.innerHTML = `
-        <div class="currency-converter-tooltip-value">${content.value}</div>
-        <div class="currency-converter-tooltip-original">${content.original}</div>
-        <div class="currency-converter-tooltip-rate">${content.rate}</div>
-      `;
+      container.appendChild(
+        make("currency-converter-tooltip-value", content.value),
+      );
+      container.appendChild(
+        make("currency-converter-tooltip-original", content.original),
+      );
+      container.appendChild(
+        make("currency-converter-tooltip-rate", content.rate),
+      );
     }
   }
 

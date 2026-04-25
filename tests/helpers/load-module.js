@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 
 /**
  * Load a source file that uses window.X = {...} pattern into a test context
- * @param {string} relativePath - Path relative to chrome-extension directory
+ * @param {string} relativePath - Path relative to repo root (e.g. "src/utils/converters.js")
  * @param {object} [existingWindow] - Optional shared window context for chaining multiple scripts
  * @returns {object} The window object with loaded modules
  */

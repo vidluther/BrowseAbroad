@@ -1,8 +1,23 @@
 {
   "manifest_version": 3,
   "name": "BrowseAbroad",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Currency and unit converter for navigating life across borders",
+  "homepage_url": "https://github.com/vidluther/BrowseAbroad",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "browseabroad@luther.io",
+      "strict_min_version": "140.0",
+      "data_collection_permissions": {
+        "required": [
+          "none"
+        ]
+      }
+    },
+    "gecko_android": {
+      "strict_min_version": "142.0"
+    }
+  },
   "permissions": [
     "storage",
     "activeTab"
@@ -11,7 +26,9 @@
     "https://api.exchangerate-api.com/*"
   ],
   "background": {
-    "service_worker": "src/background/service-worker.js"
+    "scripts": [
+      "src/background/service-worker.js"
+    ]
   },
   "content_scripts": [
     {

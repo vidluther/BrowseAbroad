@@ -140,7 +140,7 @@ function populateCurrencySelect() {
   // Get all currency codes from API, sorted alphabetically
   const currencies = Object.keys(allRates).sort();
 
-  homeCurrencySelect.innerHTML = "";
+  homeCurrencySelect.replaceChildren();
 
   currencies.forEach((code) => {
     const option = document.createElement("option");
@@ -154,10 +154,33 @@ function populateCurrencySelect() {
   });
 }
 
+function makePlaceholder(text) {
+  const el = document.createElement("div");
+  el.className = "rate-row-placeholder";
+  el.textContent = text;
+  return el;
+}
+
+function makeRateRow(code, displayRate, homeCurrency) {
+  const row = document.createElement("div");
+  row.className = "rate-row";
+
+  const from = document.createElement("span");
+  from.className = "rate-row-from";
+  from.textContent = `1 ${code}`;
+
+  const value = document.createElement("span");
+  value.className = "rate-row-value";
+  value.textContent = `${displayRate.toFixed(4)} ${homeCurrency}`;
+
+  row.appendChild(from);
+  row.appendChild(value);
+  return row;
+}
+
 function updateRateDisplay() {
   if (!allRates) {
-    rateRowsEl.innerHTML =
-      '<div class="rate-row-placeholder">Loading rates...</div>';
+    rateRowsEl.replaceChildren(makePlaceholder("Loading rates..."));
     rateSourceEl.textContent = "Loading...";
     rateSourceEl.className = "rate-source";
     return;
@@ -169,24 +192,18 @@ function updateRateDisplay() {
   );
 
   if (foreignCurrencies.length === 0) {
-    rateRowsEl.innerHTML =
-      '<div class="rate-row-placeholder">Home currency matches all detected currencies</div>';
+    rateRowsEl.replaceChildren(
+      makePlaceholder("Home currency matches all detected currencies"),
+    );
   } else {
-    rateRowsEl.innerHTML = foreignCurrencies
-      .map((code) => {
-        // Calculate: 1 [foreign] = X [home]
-        const rateInUSD = 1 / allRates[code]; // 1 foreign in USD
-        const rateInHome = rateInUSD * (allRates[homeCurrency] || 1); // USD to home
-        const displayRate = homeCurrency === "USD" ? rateInUSD : rateInHome;
-
-        return `
-        <div class="rate-row">
-          <span class="rate-row-from">1 ${code}</span>
-          <span class="rate-row-value">${displayRate.toFixed(4)} ${homeCurrency}</span>
-        </div>
-      `;
-      })
-      .join("");
+    const rows = foreignCurrencies.map((code) => {
+      // Convert "1 unit of foreign currency" through USD into the home currency.
+      const rateInUSD = 1 / allRates[code];
+      const rateInHome = rateInUSD * (allRates[homeCurrency] || 1);
+      const displayRate = homeCurrency === "USD" ? rateInUSD : rateInHome;
+      return makeRateRow(code, displayRate, homeCurrency);
+    });
+    rateRowsEl.replaceChildren(...rows);
   }
 
   rateSourceEl.textContent = "Live rate";
@@ -207,7 +224,7 @@ function updateRateDisplay() {
 }
 
 function showRateError(message) {
-  rateRowsEl.innerHTML = `<div class="rate-row-placeholder">${message}</div>`;
+  rateRowsEl.replaceChildren(makePlaceholder(message));
   rateSourceEl.textContent = message;
   rateSourceEl.className = "rate-source error";
 }
