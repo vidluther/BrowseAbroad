@@ -1,6 +1,4 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": [
-    "local>vidluther/renovate-config"
-  ]
+  "extends": ["github>vidluther/renovate-config"]
 }
