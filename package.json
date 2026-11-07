@@ -22,7 +22,7 @@
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.18",
     "jsdom": "^24.0.0",
-    "sharp": "^0.33.0",
+    "sharp": "^0.35.0",
     "vitest": "^4.0.18",
     "web-ext": "^10.1.0"
   }
